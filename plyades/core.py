@@ -30,7 +30,7 @@ class State:
         self.t = Time(t)
         self.frame = frame
         self.body = body
-        self._array = np.hstack((np.copy(r), np.copy(v)))
+        self._array = np.hstack((r, v))
         self._gravity = forces.newton
         self._forces = []
         if vars:
