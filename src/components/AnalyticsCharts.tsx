@@ -18,7 +18,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getCategoryColor, getProviderColor } from '@/lib/utils';
+import { getProviderColor } from '@/lib/utils';
 import { BarChart3, PieChart as PieChartIcon, TrendingUp, Target } from 'lucide-react';
 
 // Mock analytics data
@@ -302,7 +302,7 @@ export function AnalyticsCharts() {
                         label={({ category, percentage }) => `${category} ${percentage}%`}
                         labelLine={false}
                       >
-                        {satellitesByCategory.map((entry, index) => (
+                        {satellitesByCategory.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
