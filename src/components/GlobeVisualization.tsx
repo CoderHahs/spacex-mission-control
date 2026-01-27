@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Globe from 'globe.gl';
-import type { Satellite } from '@/types';
+import type { Satellite, SatelliteCategory } from '@/types';
 import { getMockSatellites, getMockLaunchSites, calculateOrbitPath } from '@/services/satelliteApi';
 import { useSatellitePositions } from '@/hooks/useSatellitePositions';
 import { getCategoryColor } from '@/lib/utils';
@@ -22,7 +22,7 @@ interface SatellitePointData {
   lng: number;
   alt: number;
   color: string;
-  category: string;
+  category: SatelliteCategory;
   noradId: number;
   velocity: number;
   altitude: number;
