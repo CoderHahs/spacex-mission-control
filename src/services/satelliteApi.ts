@@ -182,7 +182,7 @@ function formatEpochForTLE(epochStr: string): string {
   return `${String(year).padStart(2, '0')}${dayOfYear.toFixed(8).padStart(12, '0')}`;
 }
 
-function formatExponential(value: number, width: number): string {
+function formatExponential(value: number, _width: number): string {
   if (Math.abs(value) < 1e-10) return ' 00000-0';
   const exp = Math.floor(Math.log10(Math.abs(value)));
   const mantissa = value / Math.pow(10, exp);
