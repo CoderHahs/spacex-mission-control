@@ -1,4 +1,9 @@
 declare module 'globe.gl' {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type DataAccessor<T> = string | ((d: any) => T);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type PointAccessor<T> = (p: any) => T;
+
   interface GlobeInstance {
     (element: HTMLElement): GlobeInstance;
     
@@ -11,47 +16,60 @@ declare module 'globe.gl' {
     atmosphereAltitude(altitude: number): GlobeInstance;
     
     // Points
-    pointsData(data: object[]): GlobeInstance;
-    pointLat(accessor: string | ((d: object) => number)): GlobeInstance;
-    pointLng(accessor: string | ((d: object) => number)): GlobeInstance;
-    pointAltitude(accessor: string | number | ((d: object) => number)): GlobeInstance;
-    pointColor(accessor: string | ((d: object) => string)): GlobeInstance;
-    pointRadius(accessor: string | number | ((d: object) => number)): GlobeInstance;
-    pointLabel(accessor: string | ((d: object) => string)): GlobeInstance;
-    onPointClick(callback: (point: object) => void): GlobeInstance;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    pointsData(data: any[]): GlobeInstance;
+    pointLat(accessor: DataAccessor<number>): GlobeInstance;
+    pointLng(accessor: DataAccessor<number>): GlobeInstance;
+    pointAltitude(accessor: DataAccessor<number> | number): GlobeInstance;
+    pointColor(accessor: DataAccessor<string>): GlobeInstance;
+    pointRadius(accessor: DataAccessor<number> | number): GlobeInstance;
+    pointResolution(resolution: number): GlobeInstance;
+    pointLabel(accessor: DataAccessor<string>): GlobeInstance;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onPointClick(callback: (point: any) => void): GlobeInstance;
     
     // Labels
-    labelsData(data: object[]): GlobeInstance;
-    labelLat(accessor: string | ((d: object) => number)): GlobeInstance;
-    labelLng(accessor: string | ((d: object) => number)): GlobeInstance;
-    labelText(accessor: string | ((d: object) => string)): GlobeInstance;
-    labelSize(accessor: string | number | ((d: object) => number)): GlobeInstance;
-    labelDotRadius(accessor: string | number | ((d: object) => number)): GlobeInstance;
-    labelColor(accessor: string | ((d: object) => string)): GlobeInstance;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    labelsData(data: any[]): GlobeInstance;
+    labelLat(accessor: DataAccessor<number>): GlobeInstance;
+    labelLng(accessor: DataAccessor<number>): GlobeInstance;
+    labelText(accessor: DataAccessor<string>): GlobeInstance;
+    labelSize(accessor: DataAccessor<number> | number): GlobeInstance;
+    labelDotRadius(accessor: DataAccessor<number> | number): GlobeInstance;
+    labelColor(accessor: DataAccessor<string>): GlobeInstance;
     labelResolution(resolution: number): GlobeInstance;
-    labelLabel(accessor: string | ((d: object) => string)): GlobeInstance;
+    labelLabel(accessor: DataAccessor<string>): GlobeInstance;
     
     // Paths
-    pathsData(data: object[]): GlobeInstance;
-    pathPoints(accessor: string | ((d: object) => object[])): GlobeInstance;
-    pathPointLat(accessor: ((p: object) => number)): GlobeInstance;
-    pathPointLng(accessor: ((p: object) => number)): GlobeInstance;
-    pathPointAlt(accessor: ((p: object) => number)): GlobeInstance;
-    pathColor(accessor: string | ((d: object) => string)): GlobeInstance;
-    pathStroke(accessor: string | number | ((d: object) => number)): GlobeInstance;
-    pathDashLength(accessor: string | number | ((d: object) => number)): GlobeInstance;
-    pathDashGap(accessor: string | number | ((d: object) => number)): GlobeInstance;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    pathsData(data: any[]): GlobeInstance;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    pathPoints(accessor: DataAccessor<any[]>): GlobeInstance;
+    pathPointLat(accessor: PointAccessor<number>): GlobeInstance;
+    pathPointLng(accessor: PointAccessor<number>): GlobeInstance;
+    pathPointAlt(accessor: PointAccessor<number>): GlobeInstance;
+    pathColor(accessor: DataAccessor<string>): GlobeInstance;
+    pathStroke(accessor: DataAccessor<number> | number): GlobeInstance;
+    pathDashLength(accessor: DataAccessor<number> | number): GlobeInstance;
+    pathDashGap(accessor: DataAccessor<number> | number): GlobeInstance;
     pathDashAnimateTime(time: number): GlobeInstance;
+    pathTransitionDuration(duration: number): GlobeInstance;
     
     // Camera
     pointOfView(pov: { lat?: number; lng?: number; altitude?: number }, transitionMs?: number): GlobeInstance;
     
-    // Controls
+    // Controls (Three.js OrbitControls)
     controls(): {
       autoRotate: boolean;
       autoRotateSpeed: number;
       enableZoom: boolean;
       enablePan: boolean;
+      minDistance: number;
+      maxDistance: number;
+      zoomSpeed: number;
+      rotateSpeed: number;
+      enableDamping: boolean;
+      dampingFactor: number;
     };
     
     // Lifecycle

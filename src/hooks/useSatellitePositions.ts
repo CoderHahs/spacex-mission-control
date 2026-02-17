@@ -4,7 +4,7 @@ import { calculateSatellitePosition } from '@/services/satelliteApi';
 
 export function useSatellitePositions(satellites: Satellite[], updateInterval = 1000) {
   const [positions, setPositions] = useState<Map<string, SatellitePosition>>(new Map());
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const updatePositions = useCallback(() => {
     const newPositions = new Map<string, SatellitePosition>();
