@@ -585,15 +585,87 @@ export function GlobeVisualization({
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .customThreeObject((d: any) => {
                     if (d.type === "moon") {
+                        const moonRadius = VISUAL_MOON_SIZE * 50;
                         const geometry = new THREE.SphereGeometry(
-                            VISUAL_MOON_SIZE * 50,
-                            16,
-                            16,
+                            moonRadius,
+                            64,
+                            64,
                         );
-                        const material = new THREE.MeshBasicMaterial({
-                            color: 0xc8c8c8,
+
+                        // Load high-res moon texture + bump map for realistic surface
+                        const textureLoader = new THREE.TextureLoader();
+                        const moonTexture = textureLoader.load(
+                            "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/moon_1024.jpg",
+                        );
+                        const moonBump = textureLoader.load(
+                            "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/moon_1024.jpg",
+                        );
+
+                        const material = new THREE.MeshPhongMaterial({
+                            map: moonTexture,
+                            bumpMap: moonBump,
+                            bumpScale: 0.6,
+                            color: 0xffffff,
+                            shininess: 3,
+                            emissive: 0x111111,
+                            emissiveIntensity: 0.15,
                         });
-                        return new THREE.Mesh(geometry, material);
+
+                        const moonMesh = new THREE.Mesh(geometry, material);
+
+                        // Add a subtle glow ring around the moon
+                        const glowGeo = new THREE.RingGeometry(
+                            moonRadius * 1.02,
+                            moonRadius * 1.15,
+                            64,
+                        );
+                        const glowMat = new THREE.MeshBasicMaterial({
+                            color: 0xaabbcc,
+                            transparent: true,
+                            opacity: 0.12,
+                            side: THREE.DoubleSide,
+                        });
+                        const glowRing = new THREE.Mesh(glowGeo, glowMat);
+                        glowRing.lookAt(0, 0, 0); // face Earth
+
+                        // Add a directional light near the moon so Phong shading works
+                        const moonLight = new THREE.DirectionalLight(
+                            0xffffff,
+                            1.5,
+                        );
+                        moonLight.position.set(50, 30, 50);
+
+                        const moonGroup = new THREE.Group();
+                        moonGroup.add(moonMesh);
+                        moonGroup.add(glowRing);
+                        moonGroup.add(moonLight);
+
+                        // "Moon" label sprite
+                        const canvas = document.createElement("canvas");
+                        canvas.width = 256;
+                        canvas.height = 64;
+                        const ctx = canvas.getContext("2d")!;
+                        ctx.fillStyle = "rgba(0,0,0,0.6)";
+                        ctx.roundRect(0, 0, 256, 64, 10);
+                        ctx.fill();
+                        ctx.font = "bold 28px sans-serif";
+                        ctx.fillStyle = "#e2e8f0";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText("🌕 Moon", 128, 34);
+                        const labelTex = new THREE.CanvasTexture(canvas);
+                        const labelMat = new THREE.SpriteMaterial({
+                            map: labelTex,
+                            transparent: true,
+                            depthTest: false,
+                        });
+                        const label = new THREE.Sprite(labelMat);
+                        label.scale.set(20, 5, 1);
+                        label.position.set(0, moonRadius + 6, 0);
+                        label.renderOrder = 999;
+                        moonGroup.add(label);
+
+                        return moonGroup;
                     }
                     if (d.type === "orion") {
                         const group = new THREE.Group();
