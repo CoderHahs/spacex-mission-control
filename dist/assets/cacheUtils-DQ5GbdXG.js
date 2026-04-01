@@ -1,0 +1,1 @@
+async function o(r,n,e){let a=null;try{a=localStorage.getItem(r)}catch{}if(a)try{const t=JSON.parse(a);if(Date.now()-t.timestamp<e)return t.data}catch{}try{const t=await n(),c={data:t,timestamp:Date.now(),ttl:e};try{localStorage.setItem(r,JSON.stringify(c))}catch{}return t}catch(t){if(a)try{return JSON.parse(a).data}catch{}throw t}}export{o as f};

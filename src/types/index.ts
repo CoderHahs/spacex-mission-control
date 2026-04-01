@@ -1,213 +1,275 @@
 // Launch Library 2 API Types
 export interface Launch {
-  id: string;
-  name: string;
-  status: LaunchStatus;
-  net: string; // Date-time string
-  window_start: string;
-  window_end: string;
-  mission?: Mission;
-  pad: LaunchPad;
-  rocket: Rocket;
-  launch_service_provider: LaunchServiceProvider;
-  image?: string;
-  infographic?: string;
-  webcast_live: boolean;
-  vidURLs?: VideoURL[];
+    id: string;
+    name: string;
+    status: LaunchStatus;
+    net: string; // Date-time string
+    window_start: string;
+    window_end: string;
+    mission?: Mission;
+    pad: LaunchPad;
+    rocket: Rocket;
+    launch_service_provider: LaunchServiceProvider;
+    image?: string;
+    infographic?: string;
+    webcast_live: boolean;
+    vidURLs?: VideoURL[];
 }
 
 export interface LaunchStatus {
-  id: number;
-  name: string;
-  abbrev: string;
-  description: string;
+    id: number;
+    name: string;
+    abbrev: string;
+    description: string;
 }
 
 export interface Mission {
-  id: number;
-  name: string;
-  description: string;
-  type: string;
-  orbit?: Orbit;
+    id: number;
+    name: string;
+    description: string;
+    type: string;
+    orbit?: Orbit;
 }
 
 export interface Orbit {
-  id: number;
-  name: string;
-  abbrev: string;
+    id: number;
+    name: string;
+    abbrev: string;
 }
 
 export interface LaunchPad {
-  id: number;
-  name: string;
-  location: Location;
-  latitude: string;
-  longitude: string;
-  map_url?: string;
-  total_launch_count: number;
+    id: number;
+    name: string;
+    location: Location;
+    latitude: string;
+    longitude: string;
+    map_url?: string;
+    total_launch_count: number;
 }
 
 export interface Location {
-  id: number;
-  name: string;
-  country_code: string;
+    id: number;
+    name: string;
+    country_code: string;
 }
 
 export interface Rocket {
-  id: number;
-  configuration: RocketConfiguration;
+    id: number;
+    configuration: RocketConfiguration;
 }
 
 export interface RocketConfiguration {
-  id: number;
-  name: string;
-  full_name: string;
-  family: string;
-  variant?: string;
-  image_url?: string;
+    id: number;
+    name: string;
+    full_name: string;
+    family: string;
+    variant?: string;
+    image_url?: string;
 }
 
 export interface LaunchServiceProvider {
-  id: number;
-  name: string;
-  abbrev: string;
-  type: string;
-  country_code: string;
-  logo_url?: string;
+    id: number;
+    name: string;
+    abbrev: string;
+    type: string;
+    country_code: string;
+    logo_url?: string;
 }
 
 export interface VideoURL {
-  priority: number;
-  title: string;
-  description: string;
-  url: string;
+    priority: number;
+    title: string;
+    description: string;
+    url: string;
 }
 
 // Satellite Types
 export interface Satellite {
-  id: string;
-  name: string;
-  noradId: number;
-  tle: TLE;
-  category: SatelliteCategory;
-  position?: SatellitePosition;
-  orbitalData?: OrbitalData;
+    id: string;
+    name: string;
+    noradId: number;
+    tle: TLE;
+    category: SatelliteCategory;
+    position?: SatellitePosition;
+    orbitalData?: OrbitalData;
 }
 
 export interface TLE {
-  line1: string;
-  line2: string;
+    line1: string;
+    line2: string;
 }
 
 export interface SatellitePosition {
-  latitude: number;
-  longitude: number;
-  altitude: number;
-  velocity: number;
+    latitude: number;
+    longitude: number;
+    altitude: number;
+    velocity: number;
 }
 
 export interface OrbitalData {
-  inclination: number;
-  eccentricity: number;
-  perigee: number;
-  apogee: number;
-  period: number;
+    inclination: number;
+    eccentricity: number;
+    perigee: number;
+    apogee: number;
+    period: number;
 }
 
-export type SatelliteCategory = 
-  | 'communication'
-  | 'weather'
-  | 'navigation'
-  | 'scientific'
-  | 'military'
-  | 'earth-observation'
-  | 'iss'
-  | 'starlink'
-  | 'other';
+export type SatelliteCategory =
+    | "communication"
+    | "weather"
+    | "navigation"
+    | "scientific"
+    | "military"
+    | "earth-observation"
+    | "iss"
+    | "starlink"
+    | "other";
 
 // Space News Types
 export interface SpaceArticle {
-  id: number;
-  title: string;
-  url: string;
-  image_url: string;
-  news_site: string;
-  summary: string;
-  published_at: string;
-  updated_at: string;
-  featured: boolean;
-  launches?: { launch_id: string; provider: string }[];
-  events?: { event_id: number; provider: string }[];
+    id: number;
+    title: string;
+    url: string;
+    image_url: string;
+    news_site: string;
+    summary: string;
+    published_at: string;
+    updated_at: string;
+    featured: boolean;
+    launches?: { launch_id: string; provider: string }[];
+    events?: { event_id: number; provider: string }[];
 }
 
 // Mission Types
 export interface SpaceMission {
-  id: string;
-  name: string;
-  description: string;
-  status: MissionStatus;
-  type: MissionType;
-  startDate: string;
-  endDate?: string;
-  agency: string;
-  crew?: CrewMember[];
-  objectives?: string[];
-  progress?: number;
+    id: string;
+    name: string;
+    description: string;
+    status: MissionStatus;
+    type: MissionType;
+    startDate: string;
+    endDate?: string;
+    agency: string;
+    crew?: CrewMember[];
+    objectives?: string[];
+    progress?: number;
 }
 
 export interface CrewMember {
-  id: string;
-  name: string;
-  role: string;
-  agency: string;
-  nationality: string;
-  image?: string;
+    id: string;
+    name: string;
+    role: string;
+    agency: string;
+    nationality: string;
+    image?: string;
 }
 
-export type MissionStatus = 'planned' | 'in-progress' | 'completed' | 'failed';
-export type MissionType = 'crewed' | 'robotic' | 'cargo' | 'scientific' | 'commercial';
+export type MissionStatus = "planned" | "in-progress" | "completed" | "failed";
+export type MissionType =
+    | "crewed"
+    | "robotic"
+    | "cargo"
+    | "scientific"
+    | "commercial";
 
 // Analytics Types
 export interface LaunchStats {
-  totalLaunches: number;
-  successfulLaunches: number;
-  failedLaunches: number;
-  upcomingLaunches: number;
-  launchesByProvider: { name: string; count: number }[];
-  launchesByYear: { year: number; count: number }[];
-  launchesByMonth: { month: string; count: number }[];
+    totalLaunches: number;
+    successfulLaunches: number;
+    failedLaunches: number;
+    upcomingLaunches: number;
+    launchesByProvider: { name: string; count: number }[];
+    launchesByYear: { year: number; count: number }[];
+    launchesByMonth: { month: string; count: number }[];
 }
 
 export interface SatelliteStats {
-  totalSatellites: number;
-  byCategory: { category: string; count: number }[];
-  byCountry: { country: string; count: number }[];
-  byAltitude: { range: string; count: number }[];
+    totalSatellites: number;
+    byCategory: { category: string; count: number }[];
+    byCountry: { country: string; count: number }[];
+    byAltitude: { range: string; count: number }[];
 }
 
 // Globe Types
 export interface GlobePoint {
-  lat: number;
-  lng: number;
-  altitude?: number;
-  label?: string;
-  color?: string;
-  size?: number;
+    lat: number;
+    lng: number;
+    altitude?: number;
+    label?: string;
+    color?: string;
+    size?: number;
 }
 
 export interface OrbitalPath {
-  points: { lat: number; lng: number; alt: number }[];
-  color: string;
-  opacity: number;
+    points: { lat: number; lng: number; alt: number }[];
+    color: string;
+    opacity: number;
 }
 
 // Theme
-export type Theme = 'light' | 'dark';
+export type Theme = "light" | "dark";
 
 // API Response Types
 export interface PaginatedResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: T[];
 }
+
+// Artemis II Mission Types
+
+export interface ArtemisPhase {
+    id: string;
+    name: string;
+    description: string;
+    timestamp: Date | null;
+    missionElapsedTime: string;
+    status: "completed" | "active" | "upcoming";
+}
+
+export interface ArtemisCrewMember {
+    name: string;
+    role: "Commander" | "Pilot" | "Mission Specialist";
+    agency: "NASA" | "CSA";
+    bio: string;
+    imageUrl: string;
+}
+
+export type ArtemisMissionPhase =
+    | "pre-launch"
+    | "ascent"
+    | "earth-orbit"
+    | "translunar"
+    | "lunar-flyby"
+    | "return"
+    | "reentry"
+    | "splashdown";
+
+export interface TrajectoryWaypoint {
+    lat: number;
+    lng: number;
+    alt: number;
+    phase: ArtemisMissionPhase;
+}
+
+export interface MoonPosition {
+    lat: number;
+    lng: number;
+    distance: number;
+}
+
+export interface CacheEntry<T> {
+    data: T;
+    timestamp: number;
+    ttl: number;
+}
+
+export type NavigationSection =
+    | "globe"
+    | "artemis"
+    | "launches"
+    | "satellites"
+    | "missions"
+    | "analytics"
+    | "news";
