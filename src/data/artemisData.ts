@@ -5,8 +5,8 @@ import type {
     TrajectoryWaypoint,
 } from "../types/index";
 
-// Artemis II Launch Date: April 1, 2026 at 6:24 PM EDT = 22:24 UTC
-export const ARTEMIS_LAUNCH_DATE = new Date("2026-04-01T22:24:00Z");
+// Artemis II Launch Date: April 1, 2026 at 6:35 PM EST = 23:35 UTC
+export const ARTEMIS_LAUNCH_DATE = new Date("2026-04-01T23:35:00Z");
 
 // NASA YouTube Live Stream URL
 export const NASA_STREAM_URL = "https://www.youtube.com/watch?v=Tf_UjBMIzNo";
