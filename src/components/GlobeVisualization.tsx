@@ -76,18 +76,21 @@ const VISUAL_MOON_SIZE = 0.15; // Earth radii
  */
 function trajectoryToArcs(waypoints: TrajectoryWaypoint[]): ArcData[] {
     const arcs: ArcData[] = [];
+    const LUNAR_DISTANCE_KM = 384400;
     for (let i = 0; i < waypoints.length - 1; i++) {
         const start = waypoints[i];
         const end = waypoints[i + 1];
-        // Scale altitude for visualization (Earth radius = 6371 km)
-        const avgAlt = (start.alt + end.alt) / 2 / 6371;
+        // Scale altitude to match Moon's visual distance
+        const avgAlt =
+            ((start.alt + end.alt) / 2 / LUNAR_DISTANCE_KM) *
+            VISUAL_MOON_DISTANCE;
         arcs.push({
             startLat: start.lat,
             startLng: start.lng,
             endLat: end.lat,
             endLng: end.lng,
             color: PHASE_COLORS[end.phase],
-            altitude: Math.min(avgAlt, 0.8), // Cap for visual clarity
+            altitude: Math.min(avgAlt, VISUAL_MOON_DISTANCE * 1.1),
             phase: end.phase,
         });
     }
@@ -504,13 +507,24 @@ export function GlobeVisualization({
                 });
 
                 if (orionPos) {
+                    // Scale Orion's altitude into the same visual space as the Moon.
+                    // Real lunar distance ~384,400 km maps to VISUAL_MOON_DISTANCE (4 Earth radii).
+                    // Low orbit (~200 km) stays close to the surface (~0.03 Earth radii).
+                    const LUNAR_DISTANCE_KM = 384400;
+                    const visualAlt =
+                        (orionPos.alt / LUNAR_DISTANCE_KM) *
+                        VISUAL_MOON_DISTANCE;
+                    // Clamp: minimum just above surface, maximum slightly past the Moon
+                    const clampedAlt = Math.max(
+                        0.03,
+                        Math.min(visualAlt, VISUAL_MOON_DISTANCE * 1.1),
+                    );
+
                     customData.push({
                         id: "orion",
                         lat: orionPos.lat,
                         lng: orionPos.lng,
-                        alt:
-                            Math.max(Math.min(orionPos.alt / 6371, 0.8), 0.06) +
-                            0.02,
+                        alt: clampedAlt,
                         type: "orion",
                     });
                 }
