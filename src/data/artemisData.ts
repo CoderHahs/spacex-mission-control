@@ -9,7 +9,7 @@ import type {
 export const ARTEMIS_LAUNCH_DATE = new Date("2026-04-01T22:35:00Z");
 
 // NASA YouTube Live Stream URL
-export const NASA_STREAM_URL = "https://www.youtube.com/watch?v=Tf_UjBMIzNo";
+export const NASA_STREAM_URL = "https://www.youtube.com/watch?v=m3kR2KK8TEs";
 export const NASA_STREAM_EMBED_URL =
     "https://www.youtube.com/embed/NaJklsJonD4";
 

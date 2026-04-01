@@ -9,8 +9,11 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import {
+    ARTEMIS_CREW,
     ARTEMIS_LAUNCH_DATE,
+    MISSION_STATS,
     generateArtemisTrajectory,
+    getMissionPhase,
 } from "@/data/artemisData";
 import { getCategoryColor } from "@/lib/utils";
 import {
@@ -35,6 +38,9 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { Line2 } from "three/examples/jsm/lines/Line2.js";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 
 interface GlobeVisualizationProps {
     className?: string;
@@ -182,6 +188,7 @@ export function GlobeVisualization({
     const [launchSites] = useState(getMockLaunchSites());
     const [selectedSatellite, setSelectedSatellite] =
         useState<Satellite | null>(null);
+    const [showOrionPanel, setShowOrionPanel] = useState(false);
     const [showOrbits, setShowOrbits] = useState(true);
     const [showSatellites, setShowSatellites] = useState(true);
     const [showLaunchSites, setShowLaunchSites] = useState(true);
@@ -193,6 +200,9 @@ export function GlobeVisualization({
 
     // Orion marker animation tick
     const [, setOrionTick] = useState(0);
+
+    // Tracks when globe.gl instance is ready for interaction
+    const [globeReady, setGlobeReady] = useState(false);
 
     // Load real satellite data from CelesTrak
     useEffect(() => {
@@ -247,10 +257,20 @@ export function GlobeVisualization({
         return generateArtemisTrajectory(phase);
     }, [showArtemis, phase]);
 
-    // Convert trajectory to arc segments
+    // Convert trajectory to arc segments (exclude earth-orbit — rendered as Three.js line)
     const arcData = useMemo(() => {
         if (!showArtemis || trajectory.length < 2) return [];
-        return trajectoryToArcs(trajectory);
+        const nonOrbitWaypoints = trajectory.filter(
+            (w) => w.phase !== "earth-orbit",
+        );
+        if (nonOrbitWaypoints.length < 2) return [];
+        return trajectoryToArcs(nonOrbitWaypoints);
+    }, [showArtemis, trajectory]);
+
+    // Earth-orbit waypoints rendered separately as a smooth Three.js line
+    const earthOrbitWaypoints = useMemo(() => {
+        if (!showArtemis) return [];
+        return trajectory.filter((w) => w.phase === "earth-orbit");
     }, [showArtemis, trajectory]);
 
     // Moon position update interval (every 60 seconds)
@@ -304,6 +324,7 @@ export function GlobeVisualization({
         globe.controls().enablePan = true;
 
         globeInstanceRef.current = globe;
+        setGlobeReady(true);
     }, []);
 
     useEffect(() => {
@@ -507,26 +528,55 @@ export function GlobeVisualization({
                 });
 
                 if (orionPos) {
-                    // Scale Orion's altitude into the same visual space as the Moon.
-                    // Real lunar distance ~384,400 km maps to VISUAL_MOON_DISTANCE (4 Earth radii).
-                    // Low orbit (~200 km) stays close to the surface (~0.03 Earth radii).
-                    const LUNAR_DISTANCE_KM = 384400;
-                    const visualAlt =
-                        (orionPos.alt / LUNAR_DISTANCE_KM) *
-                        VISUAL_MOON_DISTANCE;
-                    // Clamp: minimum just above surface, maximum slightly past the Moon
-                    const clampedAlt = Math.max(
-                        0.03,
-                        Math.min(visualAlt, VISUAL_MOON_DISTANCE * 1.1),
-                    );
+                    if (phase === "earth-orbit") {
+                        // For earth-orbit, compute an orbital angle so Orion
+                        // sits exactly on the 3D orbit ring rendered below.
+                        const elapsedMs =
+                            Date.now() - ARTEMIS_LAUNCH_DATE.getTime();
+                        const phaseStart = PHASE_START_MS["earth-orbit"];
+                        const phaseEnd = PHASE_END_MS["earth-orbit"];
+                        const progress = Math.max(
+                            0,
+                            Math.min(
+                                1,
+                                (elapsedMs - phaseStart) /
+                                    (phaseEnd - phaseStart),
+                            ),
+                        );
+                        // Multiple orbits during the phase — use modulo for continuous motion
+                        const orbitsInPhase = 1.5;
+                        const orbitAngle =
+                            -((progress * orbitsInPhase) % 1) * Math.PI * 2;
 
-                    customData.push({
-                        id: "orion",
-                        lat: orionPos.lat,
-                        lng: orionPos.lng,
-                        alt: clampedAlt,
-                        type: "orion",
-                    });
+                        customData.push({
+                            id: "orion",
+                            lat: 0,
+                            lng: 0,
+                            alt: 0,
+                            type: "orion",
+                            onOrbitRing: true,
+                            orbitAngle,
+                        });
+                    } else {
+                        // Scale Orion's altitude to match the Moon visual space.
+                        const LUNAR_DISTANCE_KM = 384400;
+                        const visualAlt =
+                            (orionPos.alt / LUNAR_DISTANCE_KM) *
+                            VISUAL_MOON_DISTANCE;
+                        // Minimum 0.08 so the 3D ship model clears the globe surface
+                        const clampedAlt = Math.max(
+                            0.08,
+                            Math.min(visualAlt, VISUAL_MOON_DISTANCE * 1.1),
+                        );
+
+                        customData.push({
+                            id: "orion",
+                            lat: orionPos.lat,
+                            lng: orionPos.lng,
+                            alt: clampedAlt,
+                            type: "orion",
+                        });
+                    }
                 }
             }
 
@@ -548,57 +598,77 @@ export function GlobeVisualization({
                     if (d.type === "orion") {
                         const group = new THREE.Group();
 
-                        // Core marker — bright orange sphere
-                        const core = new THREE.Mesh(
-                            new THREE.SphereGeometry(3.5, 12, 12),
-                            new THREE.MeshBasicMaterial({ color: 0xf97316 }),
+                        // Capsule body — cone pointing forward (along +Z)
+                        const body = new THREE.Mesh(
+                            new THREE.ConeGeometry(2.5, 8, 8),
+                            new THREE.MeshBasicMaterial({ color: 0xf0f0f0 }),
                         );
-                        group.add(core);
+                        body.rotation.x = Math.PI / 2;
+                        // Cone center is at origin, tip at -Z, base at +Z
+                        group.add(body);
 
-                        // Outer glow ring for visibility
-                        const glow = new THREE.Mesh(
-                            new THREE.RingGeometry(5, 8, 32),
+                        // Heat shield — dark disc at the rear
+                        const shield = new THREE.Mesh(
+                            new THREE.CircleGeometry(2.5, 8),
+                            new THREE.MeshBasicMaterial({
+                                color: 0x333333,
+                                side: THREE.DoubleSide,
+                            }),
+                        );
+                        shield.rotation.x = -Math.PI / 2;
+                        shield.position.z = 4;
+                        group.add(shield);
+
+                        // Solar panel left
+                        const panelGeo = new THREE.BoxGeometry(12, 0.3, 3);
+                        const panelMat = new THREE.MeshBasicMaterial({
+                            color: 0x2563eb,
+                        });
+                        const panelL = new THREE.Mesh(panelGeo, panelMat);
+                        panelL.position.set(-8, 0, 0);
+                        group.add(panelL);
+
+                        // Solar panel right
+                        const panelR = new THREE.Mesh(panelGeo, panelMat);
+                        panelR.position.set(8, 0, 0);
+                        group.add(panelR);
+
+                        // Engine nozzle glow
+                        const nozzle = new THREE.Mesh(
+                            new THREE.CylinderGeometry(1.2, 1.8, 2, 8),
                             new THREE.MeshBasicMaterial({
                                 color: 0xf97316,
                                 transparent: true,
-                                opacity: 0.45,
-                                side: THREE.DoubleSide,
+                                opacity: 0.8,
                             }),
                         );
-                        group.add(glow);
+                        nozzle.rotation.x = Math.PI / 2;
+                        nozzle.position.z = 5;
+                        group.add(nozzle);
 
-                        // Pulsing halo
-                        const halo = new THREE.Mesh(
-                            new THREE.RingGeometry(8, 10, 32),
-                            new THREE.MeshBasicMaterial({
-                                color: 0xfbbf24,
-                                transparent: true,
-                                opacity: 0.25,
-                                side: THREE.DoubleSide,
-                            }),
-                        );
-                        group.add(halo);
-
-                        // Text label using sprite
+                        // "Orion" label — large readable sprite above the ship
                         const canvas = document.createElement("canvas");
-                        canvas.width = 256;
-                        canvas.height = 64;
+                        canvas.width = 512;
+                        canvas.height = 128;
                         const ctx = canvas.getContext("2d")!;
-                        ctx.fillStyle = "rgba(0,0,0,0.7)";
-                        ctx.roundRect(0, 0, 256, 64, 8);
+                        ctx.fillStyle = "rgba(0,0,0,0.75)";
+                        ctx.roundRect(0, 0, 512, 128, 16);
                         ctx.fill();
-                        ctx.font = "bold 28px sans-serif";
+                        ctx.font = "bold 56px sans-serif";
                         ctx.fillStyle = "#f97316";
                         ctx.textAlign = "center";
-                        ctx.fillText("🚀 Orion", 128, 42);
+                        ctx.textBaseline = "middle";
+                        ctx.fillText("🚀 Orion", 256, 68);
                         const texture = new THREE.CanvasTexture(canvas);
                         const spriteMat = new THREE.SpriteMaterial({
                             map: texture,
                             transparent: true,
+                            depthTest: false,
                         });
                         const sprite = new THREE.Sprite(spriteMat);
-                        sprite.scale.set(24, 6, 1);
-                        sprite.position.set(0, 12, 0);
+                        sprite.scale.set(36, 9, 1);
+                        sprite.position.set(0, 16, 0);
+                        sprite.renderOrder = 999;
                         group.add(sprite);
 
                         return group;
@@ -607,15 +677,48 @@ export function GlobeVisualization({
                 })
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .customThreeObjectUpdate((obj: any, d: any) => {
-                    // Convert lat/lng/alt to 3D position
                     const GLOBE_RADIUS = 100;
-                    const lat = d.lat * (Math.PI / 180);
-                    const lng = d.lng * (Math.PI / 180);
-                    const r = GLOBE_RADIUS * (1 + (d.alt || 0));
 
-                    obj.position.x = r * Math.cos(lat) * Math.sin(lng);
-                    obj.position.y = r * Math.sin(lat);
-                    obj.position.z = r * Math.cos(lat) * Math.cos(lng);
+                    if (d.onOrbitRing) {
+                        // Place directly on the 3D orbit ring using the same
+                        // inclination / RAAN / radius as the artemisEarthOrbit line.
+                        const altScale = (200 / 384400) * VISUAL_MOON_DISTANCE;
+                        const r = GLOBE_RADIUS * (1 + Math.max(altScale, 0.08));
+                        const inclination = 28.5 * (Math.PI / 180);
+                        const raan = -80.6 * (Math.PI / 180);
+                        const angle = d.orbitAngle as number;
+
+                        let x = r * Math.cos(angle);
+                        let y = 0;
+                        let z = r * Math.sin(angle);
+
+                        // Tilt by inclination (rotate around X axis)
+                        const y1 =
+                            y * Math.cos(inclination) -
+                            z * Math.sin(inclination);
+                        const z1 =
+                            y * Math.sin(inclination) +
+                            z * Math.cos(inclination);
+                        y = y1;
+                        z = z1;
+
+                        // Rotate by RAAN (rotate around Y axis)
+                        const x2 = x * Math.cos(raan) + z * Math.sin(raan);
+                        const z2 = -x * Math.sin(raan) + z * Math.cos(raan);
+                        x = x2;
+                        z = z2;
+
+                        obj.position.set(x, y, z);
+                    } else {
+                        // Convert lat/lng/alt to 3D position
+                        const lat = d.lat * (Math.PI / 180);
+                        const lng = d.lng * (Math.PI / 180);
+                        const r = GLOBE_RADIUS * (1 + (d.alt || 0));
+
+                        obj.position.x = r * Math.cos(lat) * Math.sin(lng);
+                        obj.position.y = r * Math.sin(lat);
+                        obj.position.z = r * Math.cos(lat) * Math.cos(lng);
+                    }
                 });
         }
 
@@ -709,7 +812,75 @@ export function GlobeVisualization({
             }
         }
 
-        // Artemis trajectory arcs
+        // Artemis earth-orbit path — rendered as a smooth Three.js line on the globe
+        {
+            const scene = globe.scene();
+            const GLOBE_RADIUS = 100;
+
+            const prevOrbit = scene.getObjectByName("artemisEarthOrbit");
+            if (prevOrbit) scene.remove(prevOrbit);
+
+            if (showArtemis && earthOrbitWaypoints.length >= 2) {
+                // Render as a true 3D circle tilted by 28.5° inclination
+                // Same approach as satellite orbit rings for a clean circular path
+                const altScale = (200 / 384400) * VISUAL_MOON_DISTANCE;
+                const r = GLOBE_RADIUS * (1 + Math.max(altScale, 0.08));
+                const inclination = 28.5 * (Math.PI / 180);
+                const raan = -80.6 * (Math.PI / 180);
+
+                const orbitPositions: number[] = [];
+                const segments = 256;
+                for (let i = 0; i <= segments; i++) {
+                    const angle = (i / segments) * Math.PI * 2;
+                    let x = r * Math.cos(angle);
+                    let y = 0;
+                    let z = r * Math.sin(angle);
+
+                    // Tilt by inclination (rotate around X axis)
+                    const y1 =
+                        y * Math.cos(inclination) - z * Math.sin(inclination);
+                    const z1 =
+                        y * Math.sin(inclination) + z * Math.cos(inclination);
+                    y = y1;
+                    z = z1;
+
+                    // Rotate by RAAN (rotate around Y axis)
+                    const x2 = x * Math.cos(raan) + z * Math.sin(raan);
+                    const z2 = -x * Math.sin(raan) + z * Math.cos(raan);
+                    x = x2;
+                    z = z2;
+
+                    orbitPositions.push(x, y, z);
+                }
+                // Close the loop
+                orbitPositions.push(
+                    orbitPositions[0],
+                    orbitPositions[1],
+                    orbitPositions[2],
+                );
+
+                const lineGeo = new LineGeometry();
+                lineGeo.setPositions(orbitPositions);
+                const lineMat = new LineMaterial({
+                    color: new THREE.Color(
+                        PHASE_COLORS["earth-orbit"],
+                    ).getHex(),
+                    linewidth: 3,
+                    transparent: true,
+                    opacity: 0.85,
+                    resolution: new THREE.Vector2(
+                        globeRef.current?.clientWidth ?? 800,
+                        globeRef.current?.clientHeight ?? 600,
+                    ),
+                });
+                const line = new Line2(lineGeo, lineMat);
+                line.computeLineDistances();
+                line.name = "artemisEarthOrbit";
+                scene.add(line);
+            }
+        }
+
+        // Artemis trajectory arcs (translunar / lunar-flyby / return phases)
         if (showArtemis && arcData.length > 0) {
             globe
                 .arcsData(arcData)
@@ -737,10 +908,33 @@ export function GlobeVisualization({
         selectedSatellite,
         showArtemis,
         arcData,
+        earthOrbitWaypoints,
         moonPos,
         currentMissionPhase,
         trajectory,
     ]);
+
+    // Refs to keep event handlers in sync without re-registering listeners
+    const showArtemisRef = useRef(showArtemis);
+    const trajectoryRef = useRef(trajectory);
+    const phaseRef = useRef(phase);
+    const filteredSatellitesRef = useRef(filteredSatellites);
+    const showSatellitesRef = useRef(showSatellites);
+    useEffect(() => {
+        showArtemisRef.current = showArtemis;
+    }, [showArtemis]);
+    useEffect(() => {
+        trajectoryRef.current = trajectory;
+    }, [trajectory]);
+    useEffect(() => {
+        phaseRef.current = phase;
+    }, [phase]);
+    useEffect(() => {
+        filteredSatellitesRef.current = filteredSatellites;
+    }, [filteredSatellites]);
+    useEffect(() => {
+        showSatellitesRef.current = showSatellites;
+    }, [showSatellites]);
 
     // Raycaster for satellite hover tooltips
     useEffect(() => {
@@ -752,13 +946,73 @@ export function GlobeVisualization({
         raycaster.params.Points = { threshold: 3 };
         const mouse = new THREE.Vector2();
 
-        // Create tooltip element
+        // Create tooltip element once
         const tooltip = document.createElement("div");
         tooltip.style.cssText =
             "position:fixed;pointer-events:none;z-index:9999;display:none;" +
             "background:rgba(0,0,0,0.85);color:white;padding:8px 12px;" +
-            "border-radius:6px;font-size:12px;line-height:1.5;max-width:220px;";
+            "border-radius:6px;font-size:12px;line-height:1.5;max-width:280px;";
         document.body.appendChild(tooltip);
+
+        /** Build Orion mission tooltip HTML */
+        const buildOrionTooltip = (): string => {
+            const now = new Date();
+            const currentPhase = getMissionPhase(ARTEMIS_LAUNCH_DATE, now);
+            const phaseLabel = currentPhase
+                .replace(/-/g, " ")
+                .replace(/\b\w/g, (c) => c.toUpperCase());
+            const phaseColor = PHASE_COLORS[currentPhase] ?? "#f97316";
+            const crewList = ARTEMIS_CREW.map(
+                (c) =>
+                    `<div style="margin-left:8px;">• ${c.name} <span style="color:#9ca3af;">(${c.role})</span></div>`,
+            ).join("");
+
+            const elapsedMs = now.getTime() - ARTEMIS_LAUNCH_DATE.getTime();
+            let elapsedLabel: string;
+            if (elapsedMs < 0) {
+                const days = Math.ceil(Math.abs(elapsedMs) / 86400000);
+                elapsedLabel = `T-${days} day${days !== 1 ? "s" : ""}`;
+            } else {
+                const days = Math.floor(elapsedMs / 86400000);
+                const hrs = Math.floor((elapsedMs % 86400000) / 3600000);
+                elapsedLabel = `T+${days}d ${hrs}h`;
+            }
+
+            return (
+                `<div style="font-weight:bold;margin-bottom:6px;color:#f97316;font-size:13px;">🚀 Orion — Artemis II</div>` +
+                `<div style="margin-bottom:4px;">Phase: <span style="color:${phaseColor};font-weight:600;">${phaseLabel}</span></div>` +
+                `<div style="margin-bottom:4px;">MET: ${elapsedLabel}</div>` +
+                `<div style="margin-bottom:4px;">Duration: ${MISSION_STATS.duration} · ${MISSION_STATS.totalDistance}</div>` +
+                `<div style="margin-bottom:2px;font-weight:600;color:#d1d5db;">Crew:</div>` +
+                crewList
+            );
+        };
+
+        /** Check if mouse is near Orion's screen position */
+        const isNearOrion = (camera: THREE.Camera, rect: DOMRect): boolean => {
+            if (!showArtemisRef.current) return false;
+
+            // Find the actual Orion Three.js object in the scene by traversing
+            // the custom layer. This avoids duplicating position math.
+            const scene = globe.scene();
+            let orionWorldPos: THREE.Vector3 | null = null;
+            scene.traverse((obj: THREE.Object3D) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const data = (obj as any).__data;
+                if (data?.type === "orion") {
+                    orionWorldPos = new THREE.Vector3();
+                    obj.getWorldPosition(orionWorldPos);
+                }
+            });
+            if (!orionWorldPos) return false;
+
+            const orionScreen = (orionWorldPos as THREE.Vector3)
+                .clone()
+                .project(camera);
+            const dx = (orionScreen.x - mouse.x) * rect.width * 0.5;
+            const dy = (orionScreen.y - mouse.y) * rect.height * 0.5;
+            return Math.sqrt(dx * dx + dy * dy) < 30;
+        };
 
         const onMouseMove = (event: MouseEvent) => {
             const rect = container.getBoundingClientRect();
@@ -769,10 +1023,21 @@ export function GlobeVisualization({
             const scene = globe.scene();
             raycaster.setFromCamera(mouse, camera);
 
+            // Check Orion first
+            if (isNearOrion(camera, rect)) {
+                tooltip.innerHTML = buildOrionTooltip();
+                tooltip.style.borderLeft = "3px solid #f97316";
+                tooltip.style.display = "block";
+                tooltip.style.left = event.clientX + 14 + "px";
+                tooltip.style.top = event.clientY + 14 + "px";
+                container.style.cursor = "pointer";
+                return;
+            }
+
             const pointsObj = scene.getObjectByName("satellitePoints");
             const sitesObj = scene.getObjectByName("launchSitePoints");
 
-            // Check launch sites first (higher priority, fewer objects)
+            // Check launch sites
             if (sitesObj) {
                 const siteHits = raycaster.intersectObject(sitesObj);
                 if (siteHits.length > 0 && siteHits[0].index !== undefined) {
@@ -796,8 +1061,10 @@ export function GlobeVisualization({
                 }
             }
 
+            // Check satellites
             if (!pointsObj) {
                 tooltip.style.display = "none";
+                container.style.cursor = "";
                 return;
             }
 
@@ -838,6 +1105,29 @@ export function GlobeVisualization({
             const scene = globe.scene();
             raycaster.setFromCamera(mouse, camera);
 
+            // Check Orion click first
+            if (isNearOrion(camera, rect)) {
+                setShowOrionPanel(true);
+                setSelectedSatellite(null);
+                // Focus on Orion inline (avoid stale closure on handleFocusOrion)
+                const orionPos = getOrionPosition(
+                    trajectoryRef.current,
+                    phaseRef.current,
+                    ARTEMIS_LAUNCH_DATE,
+                );
+                if (orionPos && globeInstanceRef.current) {
+                    const p = phaseRef.current;
+                    const altitude =
+                        p === "earth-orbit" || p === "ascent" ? 1.5 : 2.5;
+                    globeInstanceRef.current.pointOfView({
+                        lat: orionPos.lat,
+                        lng: orionPos.lng,
+                        altitude,
+                    });
+                }
+                return;
+            }
+
             const pointsObj = scene.getObjectByName("satellitePoints");
             if (!pointsObj) return;
 
@@ -849,15 +1139,13 @@ export function GlobeVisualization({
                 ];
                 if (sat) {
                     setSelectedSatellite(sat);
+                    setShowOrionPanel(false);
                     if (sat.position && globeInstanceRef.current) {
-                        globeInstanceRef.current.pointOfView(
-                            {
-                                lat: sat.position.latitude,
-                                lng: sat.position.longitude,
-                                altitude: 1.5,
-                            },
-                            1000,
-                        );
+                        globeInstanceRef.current.pointOfView({
+                            lat: sat.position.latitude,
+                            lng: sat.position.longitude,
+                            altitude: 1.5,
+                        });
                     }
                 }
             }
@@ -871,28 +1159,99 @@ export function GlobeVisualization({
             container.removeEventListener("click", onClick);
             tooltip.remove();
         };
-    }, [filteredSatellites, showSatellites]);
+        // Register listeners once globe is ready — handlers read current state via refs
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [globeReady]);
 
     const handleResetView = () => {
-        globeInstanceRef.current?.pointOfView(
-            { lat: 30, lng: -30, altitude: 2.5 },
-            1000,
-        );
+        const globe = globeInstanceRef.current;
+        if (!globe) return;
+        globe.controls().autoRotate = false;
+        globe.pointOfView({ lat: 30, lng: -30, altitude: 2.5 });
     };
 
     const handleFocusSatellite = (satellite: Satellite) => {
         const pos = positions.get(satellite.id);
-        if (pos && globeInstanceRef.current) {
-            globeInstanceRef.current.pointOfView(
-                { lat: pos.latitude, lng: pos.longitude, altitude: 0.5 },
-                1000,
+        const globe = globeInstanceRef.current;
+        if (pos && globe) {
+            globe.pointOfView({
+                lat: pos.latitude,
+                lng: pos.longitude,
+                altitude: 0.5,
+            });
+        }
+    };
+
+    const handleFocusOrion = () => {
+        const globe = globeInstanceRef.current;
+        if (!globe) return;
+
+        if (showArtemis && phase === "earth-orbit") {
+            // Compute the orbital angle the same way as the custom layer
+            const elapsedMs = Date.now() - ARTEMIS_LAUNCH_DATE.getTime();
+            const phaseStart = PHASE_START_MS["earth-orbit"];
+            const phaseEnd = PHASE_END_MS["earth-orbit"];
+            const progress = Math.max(
+                0,
+                Math.min(1, (elapsedMs - phaseStart) / (phaseEnd - phaseStart)),
             );
+            const orbitsInPhase = 1.5;
+            const orbitAngle = -((progress * orbitsInPhase) % 1) * Math.PI * 2;
+
+            // Convert the 3D ring position back to lat/lng for pointOfView
+            const GLOBE_RADIUS = 100;
+            const altScale = (200 / 384400) * VISUAL_MOON_DISTANCE;
+            const r = GLOBE_RADIUS * (1 + Math.max(altScale, 0.08));
+            const inclination = 28.5 * (Math.PI / 180);
+            const raan = -80.6 * (Math.PI / 180);
+
+            let x = r * Math.cos(orbitAngle);
+            let y = 0;
+            let z = r * Math.sin(orbitAngle);
+
+            const y1 = y * Math.cos(inclination) - z * Math.sin(inclination);
+            const z1 = y * Math.sin(inclination) + z * Math.cos(inclination);
+            y = y1;
+            z = z1;
+
+            const x2 = x * Math.cos(raan) + z * Math.sin(raan);
+            const z2 = -x * Math.sin(raan) + z * Math.cos(raan);
+            x = x2;
+            z = z2;
+
+            // Convert back to lat/lng from cartesian
+            const lat = Math.asin(y / r) * (180 / Math.PI);
+            const lng = Math.atan2(x, z) * (180 / Math.PI);
+
+            globe.pointOfView({ lat, lng, altitude: 1.5 });
+            return;
+        }
+
+        const orionPos = getOrionPosition(
+            trajectory,
+            phase,
+            ARTEMIS_LAUNCH_DATE,
+        );
+        if (orionPos) {
+            const altitude = phase === "ascent" ? 1.5 : 2.5;
+            globe.pointOfView({
+                lat: orionPos.lat,
+                lng: orionPos.lng,
+                altitude,
+            });
         }
     };
 
     return (
         <div className={`relative ${className}`}>
-            <div className="absolute top-4 left-4 z-10 space-y-2">
+            <div
+                className="absolute top-4 left-4 z-10 space-y-2"
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
+                onMouseUp={(e) => e.stopPropagation()}
+            >
                 <Card className="glass-effect">
                     <CardHeader className="p-3">
                         <CardTitle className="text-sm flex items-center gap-2">
@@ -981,6 +1340,17 @@ export function GlobeVisualization({
                                 <Rocket className="h-3 w-3 mr-1" />
                                 Artemis
                             </Button>
+                            {showArtemis && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={handleFocusOrion}
+                                >
+                                    <Rocket className="h-3 w-3 mr-1" />
+                                    Focus Orion
+                                </Button>
+                            )}
                         </div>
 
                         <Button
@@ -997,7 +1367,12 @@ export function GlobeVisualization({
             </div>
 
             {selectedSatellite && (
-                <div className="absolute top-4 right-4 z-10">
+                <div
+                    className="absolute top-4 right-4 z-10"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <Card className="glass-effect w-64">
                         <CardHeader className="p-3">
                             <div className="flex justify-between items-start">
@@ -1085,6 +1460,144 @@ export function GlobeVisualization({
                     </Card>
                 </div>
             )}
+
+            {showOrionPanel &&
+                !selectedSatellite &&
+                (() => {
+                    const now = new Date();
+                    const orionPhase = getMissionPhase(
+                        ARTEMIS_LAUNCH_DATE,
+                        now,
+                    );
+                    const phaseLabel = orionPhase
+                        .replace(/-/g, " ")
+                        .replace(/\b\w/g, (c) => c.toUpperCase());
+                    const elapsedMs =
+                        now.getTime() - ARTEMIS_LAUNCH_DATE.getTime();
+                    const elapsedLabel =
+                        elapsedMs < 0
+                            ? `T-${Math.ceil(Math.abs(elapsedMs) / 86400000)} days`
+                            : `T+${Math.floor(elapsedMs / 86400000)}d ${Math.floor((elapsedMs % 86400000) / 3600000)}h`;
+                    const orionPos = getOrionPosition(
+                        trajectory,
+                        phase,
+                        ARTEMIS_LAUNCH_DATE,
+                    );
+
+                    return (
+                        <div
+                            className="absolute top-4 right-4 z-10"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <Card className="glass-effect w-72">
+                                <CardHeader className="p-3">
+                                    <div className="flex justify-between items-start">
+                                        <CardTitle className="text-sm flex items-center gap-1">
+                                            <Rocket className="h-4 w-4 text-orange-500" />
+                                            Orion — Artemis II
+                                        </CardTitle>
+                                        <Badge
+                                            variant="outline"
+                                            className="text-xs"
+                                            style={{
+                                                borderColor:
+                                                    PHASE_COLORS[orionPhase],
+                                                color: PHASE_COLORS[orionPhase],
+                                            }}
+                                        >
+                                            {phaseLabel}
+                                        </Badge>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-3 pt-0 space-y-2">
+                                    <div className="text-xs space-y-1">
+                                        <p>
+                                            <span className="text-muted-foreground">
+                                                MET:
+                                            </span>{" "}
+                                            {elapsedLabel}
+                                        </p>
+                                        <p>
+                                            <span className="text-muted-foreground">
+                                                Duration:
+                                            </span>{" "}
+                                            {MISSION_STATS.duration}
+                                        </p>
+                                        <p>
+                                            <span className="text-muted-foreground">
+                                                Distance:
+                                            </span>{" "}
+                                            {MISSION_STATS.totalDistance}
+                                        </p>
+                                        <p>
+                                            <span className="text-muted-foreground">
+                                                Re-entry Speed:
+                                            </span>{" "}
+                                            {MISSION_STATS.reentrySpeed}
+                                        </p>
+                                        {orionPos && (
+                                            <>
+                                                <p>
+                                                    <span className="text-muted-foreground">
+                                                        Lat:
+                                                    </span>{" "}
+                                                    {orionPos.lat.toFixed(4)}°
+                                                </p>
+                                                <p>
+                                                    <span className="text-muted-foreground">
+                                                        Lng:
+                                                    </span>{" "}
+                                                    {orionPos.lng.toFixed(4)}°
+                                                </p>
+                                                <p>
+                                                    <span className="text-muted-foreground">
+                                                        Altitude:
+                                                    </span>{" "}
+                                                    {orionPos.alt.toFixed(0)} km
+                                                </p>
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="text-xs">
+                                        <p className="text-muted-foreground mb-1">
+                                            Crew:
+                                        </p>
+                                        {ARTEMIS_CREW.map((c) => (
+                                            <p key={c.name} className="ml-2">
+                                                • {c.name}{" "}
+                                                <span className="text-muted-foreground">
+                                                    ({c.role}, {c.agency})
+                                                </span>
+                                            </p>
+                                        ))}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 h-7 text-xs"
+                                            onClick={handleFocusOrion}
+                                        >
+                                            Focus
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 h-7 text-xs"
+                                            onClick={() =>
+                                                setShowOrionPanel(false)
+                                            }
+                                        >
+                                            Close
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    );
+                })()}
 
             <div
                 ref={globeRef}
