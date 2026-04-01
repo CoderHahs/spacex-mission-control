@@ -2,7 +2,14 @@ import { Navigation } from "@/components/Navigation";
 import { ARTEMIS_LAUNCH_DATE, getMissionPhase } from "@/data/artemisData";
 import type { NavigationSection } from "@/types/index";
 import { Rocket } from "lucide-react";
-import { Suspense, lazy, useMemo, useState } from "react";
+import { Suspense, lazy, useMemo } from "react";
+import {
+    Navigate,
+    Route,
+    Routes,
+    useLocation,
+    useNavigate,
+} from "react-router-dom";
 
 // Lazy load components for better performance
 const GlobeVisualization = lazy(() =>
@@ -35,6 +42,26 @@ const NewsFeed = lazy(() =>
 );
 const ArtemisTracker = lazy(() => import("@/components/ArtemisTracker"));
 
+const PATH_TO_SECTION: Record<string, NavigationSection> = {
+    "/": "globe",
+    "/artemis-2": "artemis",
+    "/launches": "launches",
+    "/satellites": "satellites",
+    "/missions": "missions",
+    "/analytics": "analytics",
+    "/news": "news",
+};
+
+export const SECTION_TO_PATH: Record<NavigationSection, string> = {
+    globe: "/",
+    artemis: "/artemis-2",
+    launches: "/launches",
+    satellites: "/satellites",
+    missions: "/missions",
+    analytics: "/analytics",
+    news: "/news",
+};
+
 function LoadingSpinner() {
     return (
         <div className="flex flex-col items-center justify-center h-64">
@@ -48,84 +75,99 @@ function LoadingSpinner() {
 }
 
 function App() {
-    const [activeSection, setActiveSection] =
-        useState<NavigationSection>("globe");
+    const location = useLocation();
+    const navigate = useNavigate();
 
+    const activeSection: NavigationSection =
+        PATH_TO_SECTION[location.pathname] ?? "globe";
+
+    const handleSectionChange = (section: NavigationSection) => {
+        navigate(SECTION_TO_PATH[section]);
+    };
+
+    // Compute the real mission phase based on current time
     const currentMissionPhase = useMemo(
         () => getMissionPhase(ARTEMIS_LAUNCH_DATE, new Date()),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [activeSection],
+        [],
     );
-
-    const renderSection = () => {
-        switch (activeSection) {
-            case "globe":
-                return (
-                    <div className="h-[calc(100vh-8rem)]">
-                        <GlobeVisualization
-                            className="h-full"
-                            showArtemisTrajectory={true}
-                            currentMissionPhase={currentMissionPhase}
-                        />
-                    </div>
-                );
-            case "artemis":
-                return (
-                    <div className="container py-6">
-                        <ArtemisTracker
-                            onNavigateToGlobe={() => setActiveSection("globe")}
-                        />
-                    </div>
-                );
-            case "launches":
-                return (
-                    <div className="container py-6">
-                        <LaunchDashboard />
-                    </div>
-                );
-            case "satellites":
-                return (
-                    <div className="container py-6">
-                        <SatelliteTracker />
-                    </div>
-                );
-            case "missions":
-                return (
-                    <div className="container py-6">
-                        <MissionsOverview />
-                    </div>
-                );
-            case "analytics":
-                return (
-                    <div className="container py-6">
-                        <AnalyticsCharts />
-                    </div>
-                );
-            case "news":
-                return (
-                    <div className="container py-6">
-                        <NewsFeed />
-                    </div>
-                );
-            default:
-                return null;
-        }
-    };
 
     return (
         <div className="min-h-screen bg-background">
             <Navigation
                 activeSection={activeSection}
-                onSectionChange={setActiveSection}
+                onSectionChange={handleSectionChange}
             />
-
             <main>
                 <Suspense fallback={<LoadingSpinner />}>
-                    {renderSection()}
+                    <Routes>
+                        <Route
+                            path="/"
+                            element={
+                                <div className="h-[calc(100vh-8rem)]">
+                                    <GlobeVisualization
+                                        className="h-full"
+                                        showArtemisTrajectory={true}
+                                        currentMissionPhase={
+                                            currentMissionPhase
+                                        }
+                                    />
+                                </div>
+                            }
+                        />
+                        <Route
+                            path="/artemis-2"
+                            element={
+                                <div className="container py-6">
+                                    <ArtemisTracker
+                                        onNavigateToGlobe={() => navigate("/")}
+                                    />
+                                </div>
+                            }
+                        />
+                        <Route
+                            path="/launches"
+                            element={
+                                <div className="container py-6">
+                                    <LaunchDashboard />
+                                </div>
+                            }
+                        />
+                        <Route
+                            path="/satellites"
+                            element={
+                                <div className="container py-6">
+                                    <SatelliteTracker />
+                                </div>
+                            }
+                        />
+                        <Route
+                            path="/missions"
+                            element={
+                                <div className="container py-6">
+                                    <MissionsOverview />
+                                </div>
+                            }
+                        />
+                        <Route
+                            path="/analytics"
+                            element={
+                                <div className="container py-6">
+                                    <AnalyticsCharts />
+                                </div>
+                            }
+                        />
+                        <Route
+                            path="/news"
+                            element={
+                                <div className="container py-6">
+                                    <NewsFeed />
+                                </div>
+                            }
+                        />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
                 </Suspense>
             </main>
-
-            {/* Footer */}
             <footer className="border-t py-6 mt-auto">
                 <div className="container">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4">

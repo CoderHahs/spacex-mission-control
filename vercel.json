@@ -7,6 +7,10 @@
         {
             "source": "/api/celestrak/:path*",
             "destination": "https://celestrak.org/NORAD/elements/:path*"
+        },
+        {
+            "source": "/((?!api/).*)",
+            "destination": "/index.html"
         }
     ],
     "github": {

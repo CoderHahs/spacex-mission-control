@@ -1,3 +1,4 @@
+import { SECTION_TO_PATH } from "@/App";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import {
     X,
 } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 interface NavigationProps {
     activeSection: NavigationSection;
@@ -55,10 +57,7 @@ const navItems: {
     { id: "news", label: "News", icon: <Newspaper className="h-5 w-5" /> },
 ];
 
-export function Navigation({
-    activeSection,
-    onSectionChange,
-}: NavigationProps) {
+export function Navigation({ activeSection }: NavigationProps) {
     const { theme, toggleTheme } = useTheme();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const showLiveBadge = isInMissionWindow(ARTEMIS_LAUNCH_DATE, new Date());
@@ -96,21 +95,23 @@ export function Navigation({
                                         }
                                         size="sm"
                                         className="gap-2"
-                                        onClick={() => onSectionChange(item.id)}
+                                        asChild
                                     >
-                                        {item.icon}
-                                        <span className="hidden lg:inline">
-                                            {item.label}
-                                        </span>
-                                        {item.id === "artemis" &&
-                                            showLiveBadge && (
-                                                <Badge
-                                                    variant="destructive"
-                                                    className="animate-pulse px-1.5 py-0 text-[10px] leading-4"
-                                                >
-                                                    LIVE
-                                                </Badge>
-                                            )}
+                                        <Link to={SECTION_TO_PATH[item.id]}>
+                                            {item.icon}
+                                            <span className="hidden lg:inline">
+                                                {item.label}
+                                            </span>
+                                            {item.id === "artemis" &&
+                                                showLiveBadge && (
+                                                    <Badge
+                                                        variant="destructive"
+                                                        className="animate-pulse px-1.5 py-0 text-[10px] leading-4"
+                                                    >
+                                                        LIVE
+                                                    </Badge>
+                                                )}
+                                        </Link>
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -173,21 +174,22 @@ export function Navigation({
                                             : "ghost"
                                     }
                                     className="justify-start gap-2"
-                                    onClick={() => {
-                                        onSectionChange(item.id);
-                                        setMobileMenuOpen(false);
-                                    }}
+                                    asChild
+                                    onClick={() => setMobileMenuOpen(false)}
                                 >
-                                    {item.icon}
-                                    {item.label}
-                                    {item.id === "artemis" && showLiveBadge && (
-                                        <Badge
-                                            variant="destructive"
-                                            className="animate-pulse px-1.5 py-0 text-[10px] leading-4"
-                                        >
-                                            LIVE
-                                        </Badge>
-                                    )}
+                                    <Link to={SECTION_TO_PATH[item.id]}>
+                                        {item.icon}
+                                        {item.label}
+                                        {item.id === "artemis" &&
+                                            showLiveBadge && (
+                                                <Badge
+                                                    variant="destructive"
+                                                    className="animate-pulse px-1.5 py-0 text-[10px] leading-4"
+                                                >
+                                                    LIVE
+                                                </Badge>
+                                            )}
+                                    </Link>
                                 </Button>
                             ))}
                         </nav>

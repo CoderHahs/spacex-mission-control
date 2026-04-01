@@ -8,7 +8,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { generateArtemisTrajectory } from "@/data/artemisData";
+import {
+    ARTEMIS_LAUNCH_DATE,
+    generateArtemisTrajectory,
+} from "@/data/artemisData";
 import { getCategoryColor } from "@/lib/utils";
 import {
     fetchTLEDataWithFallback,
@@ -92,12 +95,40 @@ function trajectoryToArcs(waypoints: TrajectoryWaypoint[]): ArcData[] {
 }
 
 /**
- * Get the Orion spacecraft position along the trajectory for the current phase.
- * Returns the waypoint closest to the "current" position within the active phase.
+ * Phase duration thresholds in milliseconds, matching getMissionPhase logic.
+ * Used to compute how far through a phase the mission currently is.
+ */
+const PHASE_START_MS: Record<ArtemisMissionPhase, number> = {
+    "pre-launch": -Infinity,
+    ascent: 0,
+    "earth-orbit": 8.1 * 60 * 1000,
+    translunar: 90 * 60 * 1000,
+    "lunar-flyby": 3.5 * 24 * 60 * 60 * 1000,
+    return: 5 * 24 * 60 * 60 * 1000,
+    reentry: 9.5 * 24 * 60 * 60 * 1000,
+    splashdown: 10 * 24 * 60 * 60 * 1000,
+};
+
+const PHASE_END_MS: Record<ArtemisMissionPhase, number> = {
+    "pre-launch": 0,
+    ascent: 8.1 * 60 * 1000,
+    "earth-orbit": 90 * 60 * 1000,
+    translunar: 3.5 * 24 * 60 * 60 * 1000,
+    "lunar-flyby": 5 * 24 * 60 * 60 * 1000,
+    return: 9.5 * 24 * 60 * 60 * 1000,
+    reentry: 10 * 24 * 60 * 60 * 1000,
+    splashdown: 11 * 24 * 60 * 60 * 1000,
+};
+
+/**
+ * Get the Orion spacecraft position along the trajectory based on real mission elapsed time.
+ * Uses the launch date to compute how far through the current phase the mission is,
+ * then picks the corresponding waypoint along the trajectory.
  */
 function getOrionPosition(
     waypoints: TrajectoryWaypoint[],
     phase: ArtemisMissionPhase,
+    launchDate: Date,
 ): TrajectoryWaypoint | null {
     // Pre-launch and ascent: show Orion at KSC launch pad
     if (phase === "pre-launch" || phase === "ascent") {
@@ -109,12 +140,22 @@ function getOrionPosition(
     // Find waypoints matching the current phase
     const phaseWaypoints = waypoints.filter((w) => w.phase === phase);
     if (phaseWaypoints.length > 0) {
-        // Animate: use time-based index to move along phase waypoints
-        const now = Date.now();
-        const cycleMs = 10000; // 10 second cycle through phase waypoints
-        const idx = Math.floor(
-            ((now % cycleMs) / cycleMs) * phaseWaypoints.length,
-        );
+        // Compute progress through the current phase based on real elapsed time
+        const elapsedMs = Date.now() - launchDate.getTime();
+        const phaseStart = PHASE_START_MS[phase];
+        const phaseEnd = PHASE_END_MS[phase];
+        const phaseDuration = phaseEnd - phaseStart;
+
+        // Clamp progress to [0, 1]
+        const progress =
+            phaseDuration > 0
+                ? Math.max(
+                      0,
+                      Math.min(1, (elapsedMs - phaseStart) / phaseDuration),
+                  )
+                : 0;
+
+        const idx = Math.floor(progress * (phaseWaypoints.length - 1));
         return phaseWaypoints[Math.min(idx, phaseWaypoints.length - 1)];
     }
 
@@ -218,12 +259,12 @@ export function GlobeVisualization({
         return () => clearInterval(interval);
     }, [showArtemis]);
 
-    // Orion marker animation interval
+    // Orion marker position update interval (every 30 seconds for real-time tracking)
     useEffect(() => {
         if (!showArtemis) return;
         const interval = setInterval(() => {
             setOrionTick((t) => t + 1);
-        }, 2000);
+        }, 30_000);
         return () => clearInterval(interval);
     }, [showArtemis]);
 
@@ -448,7 +489,11 @@ export function GlobeVisualization({
 
             // Add Moon + Orion if Artemis trajectory is active
             if (showArtemis) {
-                const orionPos = getOrionPosition(trajectory, phase);
+                const orionPos = getOrionPosition(
+                    trajectory,
+                    phase,
+                    ARTEMIS_LAUNCH_DATE,
+                );
 
                 customData.push({
                     id: "moon",
