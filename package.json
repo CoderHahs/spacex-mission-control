@@ -28,7 +28,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "date-fns": "^3.3.1",
-    "globe.gl": "2.24.0",
+    "globe.gl": "2.22.1",
     "lucide-react": "^0.321.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
