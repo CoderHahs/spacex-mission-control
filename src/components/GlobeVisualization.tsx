@@ -18,7 +18,6 @@ import {
 import type {
     ArtemisMissionPhase,
     Satellite,
-    SatelliteCategory,
     TrajectoryWaypoint,
 } from "@/types";
 import { getMoonPosition } from "@/utils/moonPosition";
@@ -40,34 +39,7 @@ interface GlobeVisualizationProps {
     currentMissionPhase?: ArtemisMissionPhase;
 }
 
-// Define types for globe data
-interface SatellitePointData {
-    id: string;
-    name: string;
-    lat: number;
-    lng: number;
-    alt: number;
-    color: string;
-    category: SatelliteCategory;
-    noradId: number;
-    velocity: number;
-    altitude: number;
-}
-
-interface LaunchSiteData {
-    name: string;
-    lat: number;
-    lng: number;
-    country: string;
-    launches: number;
-    size: number;
-}
-
-interface OrbitPointData {
-    lat: number;
-    lng: number;
-    alt: number;
-}
+// Globe data types are inferred from the globe library's generic parameters
 
 interface ArcData {
     startLat: number;

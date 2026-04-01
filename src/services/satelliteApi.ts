@@ -86,15 +86,7 @@ function positionFromElements(entry: CelestrakTLE): SatellitePosition | null {
         const raan = entry.RA_OF_ASC_NODE * DEG2RAD;
         const inc = entry.INCLINATION * DEG2RAD;
 
-        const xECI =
-            xOrb * (Math.cos(raan) * 1 - Math.sin(raan) * Math.cos(inc) * 0) +
-            yOrb * (-Math.sin(raan) * Math.cos(inc));
-        const yECI =
-            xOrb * (Math.sin(raan) * 1 + Math.cos(raan) * Math.cos(inc) * 0) +
-            yOrb * (Math.cos(raan) * Math.cos(inc));
-        const zECI = xOrb * 0 + yOrb * Math.sin(inc);
-
-        // Correct ECI calculation
+        // ECI calculation
         const xE =
             xOrb * Math.cos(raan) - yOrb * Math.sin(raan) * Math.cos(inc);
         const yE =
