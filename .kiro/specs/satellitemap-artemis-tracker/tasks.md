@@ -11,7 +11,7 @@ Transform the spacex-mission-control platform from a mock-data demo into a produ
         - Add `ArtemisPhase`, `ArtemisCrewMember`, `ArtemisMissionPhase`, `TrajectoryWaypoint`, `MoonPosition`, `CacheEntry<T>`, and extended `NavigationSection` type
         - _Requirements: 4.1–4.10, 5.2, 5.3, 6.2–6.4, 7.2_
     - [x] 1.2 Create `src/data/artemisData.ts` with hardcoded Artemis II mission constants
-        - Define `ARTEMIS_LAUNCH_DATE` (April 1, 2026 22:24:00 UTC), crew array (Wiseman, Glover, Koch, Hansen), 12 mission timeline milestones, mission stats (685,000 mi, 10 days, 25,000 mph, 4,700 mi beyond Moon), phase transition thresholds, and NASA YouTube stream URL
+        - Define `ARTEMIS_LAUNCH_DATE` (April 1, 2026 22:35:00 UTC), crew array (Wiseman, Glover, Koch, Hansen), 12 mission timeline milestones, mission stats (685,000 mi, 10 days, 25,000 mph, 4,700 mi beyond Moon), phase transition thresholds, and NASA YouTube stream URL
         - Implement `getMissionPhase(launchDate, now)` returning exactly one `ArtemisMissionPhase` based on elapsed time thresholds
         - Implement `isInMissionWindow(launchDate, now)` returning true when absolute difference ≤ 10 days
         - _Requirements: 1.1, 2.1, 2.2, 3.1, 3.3, 3.4, 4.1–4.10, 8.1–8.3, 14.1_
