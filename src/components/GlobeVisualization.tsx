@@ -50,16 +50,6 @@ interface GlobeVisualizationProps {
 
 // Globe data types are inferred from the globe library's generic parameters
 
-interface ArcData {
-    startLat: number;
-    startLng: number;
-    endLat: number;
-    endLng: number;
-    color: string;
-    altitude: number;
-    phase: ArtemisMissionPhase;
-}
-
 // Phase color mapping
 const PHASE_COLORS: Record<ArtemisMissionPhase, string> = {
     "pre-launch": "#9ca3af",
@@ -75,33 +65,6 @@ const PHASE_COLORS: Record<ArtemisMissionPhase, string> = {
 // Artistic scaling constants for Moon visualization
 const VISUAL_MOON_DISTANCE = 4; // Earth radii
 const VISUAL_MOON_SIZE = 0.15; // Earth radii
-
-/**
- * Convert trajectory waypoints into arc segments for Globe.gl arcsData layer.
- * Each consecutive pair of waypoints becomes one arc.
- */
-function trajectoryToArcs(waypoints: TrajectoryWaypoint[]): ArcData[] {
-    const arcs: ArcData[] = [];
-    const LUNAR_DISTANCE_KM = 384400;
-    for (let i = 0; i < waypoints.length - 1; i++) {
-        const start = waypoints[i];
-        const end = waypoints[i + 1];
-        // Scale altitude to match Moon's visual distance
-        const avgAlt =
-            ((start.alt + end.alt) / 2 / LUNAR_DISTANCE_KM) *
-            VISUAL_MOON_DISTANCE;
-        arcs.push({
-            startLat: start.lat,
-            startLng: start.lng,
-            endLat: end.lat,
-            endLng: end.lng,
-            color: PHASE_COLORS[end.phase],
-            altitude: Math.min(avgAlt, VISUAL_MOON_DISTANCE * 1.1),
-            phase: end.phase,
-        });
-    }
-    return arcs;
-}
 
 /**
  * Phase duration thresholds in milliseconds, matching getMissionPhase logic.
@@ -257,14 +220,10 @@ export function GlobeVisualization({
         return generateArtemisTrajectory(phase);
     }, [showArtemis, phase]);
 
-    // Convert trajectory to arc segments (exclude earth-orbit — rendered as Three.js line)
-    const arcData = useMemo(() => {
+    // Non-earth-orbit waypoints for Three.js line rendering (translunar/return/reentry)
+    const transferWaypoints = useMemo(() => {
         if (!showArtemis || trajectory.length < 2) return [];
-        const nonOrbitWaypoints = trajectory.filter(
-            (w) => w.phase !== "earth-orbit",
-        );
-        if (nonOrbitWaypoints.length < 2) return [];
-        return trajectoryToArcs(nonOrbitWaypoints);
+        return trajectory.filter((w) => w.phase !== "earth-orbit");
     }, [showArtemis, trajectory]);
 
     // Earth-orbit waypoints rendered separately as a smooth Three.js line
@@ -952,22 +911,85 @@ export function GlobeVisualization({
             }
         }
 
-        // Artemis trajectory arcs (translunar / lunar-flyby / return phases)
-        if (showArtemis && arcData.length > 0) {
-            globe
-                .arcsData(arcData)
-                .arcStartLat("startLat")
-                .arcStartLng("startLng")
-                .arcEndLat("endLat")
-                .arcEndLng("endLng")
-                .arcColor("color")
-                .arcAltitude((d: ArcData) => d.altitude)
-                .arcStroke(1.5)
-                .arcDashLength(0.4)
-                .arcDashGap(0.2)
-                .arcDashAnimateTime(2000);
-        } else {
+        // Artemis transfer trajectory (translunar / lunar-flyby / return) — Three.js line
+        {
+            const scene = globe.scene();
+            const GLOBE_RADIUS = 100;
+            const LUNAR_DISTANCE_KM = 384400;
+
+            const prevTransfer = scene.getObjectByName("artemisTransferPath");
+            if (prevTransfer) scene.remove(prevTransfer);
+
             globe.arcsData([]);
+
+            if (showArtemis && transferWaypoints.length >= 2) {
+                // Group waypoints by phase for color-coded line segments
+                const phaseGroups: {
+                    phase: ArtemisMissionPhase;
+                    waypoints: TrajectoryWaypoint[];
+                }[] = [];
+                let currentGroup: {
+                    phase: ArtemisMissionPhase;
+                    waypoints: TrajectoryWaypoint[];
+                } | null = null;
+
+                for (const wp of transferWaypoints) {
+                    if (!currentGroup || currentGroup.phase !== wp.phase) {
+                        // Overlap last point of previous group for continuity
+                        currentGroup = {
+                            phase: wp.phase,
+                            waypoints: currentGroup
+                                ? [
+                                      currentGroup.waypoints[
+                                          currentGroup.waypoints.length - 1
+                                      ],
+                                  ]
+                                : [],
+                        };
+                        phaseGroups.push(currentGroup);
+                    }
+                    currentGroup.waypoints.push(wp);
+                }
+
+                const transferGroup = new THREE.Group();
+                transferGroup.name = "artemisTransferPath";
+
+                for (const pg of phaseGroups) {
+                    if (pg.waypoints.length < 2) continue;
+
+                    const positions: number[] = [];
+                    for (const wp of pg.waypoints) {
+                        const altScale =
+                            (wp.alt / LUNAR_DISTANCE_KM) * VISUAL_MOON_DISTANCE;
+                        const r = GLOBE_RADIUS * (1 + Math.max(altScale, 0.08));
+                        const lat = wp.lat * (Math.PI / 180);
+                        const lng = wp.lng * (Math.PI / 180);
+
+                        const x = r * Math.cos(lat) * Math.sin(lng);
+                        const y = r * Math.sin(lat);
+                        const z = r * Math.cos(lat) * Math.cos(lng);
+                        positions.push(x, y, z);
+                    }
+
+                    const lineGeo = new LineGeometry();
+                    lineGeo.setPositions(positions);
+                    const lineMat = new LineMaterial({
+                        color: new THREE.Color(PHASE_COLORS[pg.phase]).getHex(),
+                        linewidth: 2.5,
+                        transparent: true,
+                        opacity: 0.8,
+                        resolution: new THREE.Vector2(
+                            globeRef.current?.clientWidth ?? 800,
+                            globeRef.current?.clientHeight ?? 600,
+                        ),
+                    });
+                    const line = new Line2(lineGeo, lineMat);
+                    line.computeLineDistances();
+                    transferGroup.add(line);
+                }
+
+                scene.add(transferGroup);
+            }
         }
     }, [
         satellites,
@@ -979,7 +1001,7 @@ export function GlobeVisualization({
         showOrbits,
         selectedSatellite,
         showArtemis,
-        arcData,
+        transferWaypoints,
         earthOrbitWaypoints,
         moonPos,
         currentMissionPhase,
