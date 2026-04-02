@@ -1,9 +1,4 @@
-export {
-    getMockPastLaunches,
-    getMockUpcomingLaunches,
-    getPastLaunches,
-    getUpcomingLaunches,
-} from "./launchApi";
+export { getPastLaunches, getUpcomingLaunches } from "./launchApi";
 export { getMockMissionStats, getMockMissions } from "./missionApi";
 export {
     fetchArticles,

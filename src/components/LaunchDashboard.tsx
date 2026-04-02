@@ -31,10 +31,10 @@ const ARTEMIS_II_LAUNCH: Launch = {
     id: "artemis-ii",
     name: "SLS Block 1 | Artemis II",
     status: {
-        id: 1,
-        name: "Go for Launch",
-        abbrev: "Go",
-        description: "Current T-0 confirmed by NASA",
+        id: 3,
+        name: "Launch Successful",
+        abbrev: "Success",
+        description: "Launched successfully on April 1, 2026",
     },
     net: ARTEMIS_LAUNCH_DATE.toISOString(),
     window_start: ARTEMIS_LAUNCH_DATE.toISOString(),
@@ -77,7 +77,7 @@ const ARTEMIS_II_LAUNCH: Launch = {
         type: "Government",
         country_code: "USA",
     },
-    webcast_live: false,
+    webcast_live: true,
 };
 
 function formatDate(dateStr: string): string {
@@ -178,13 +178,18 @@ export function LaunchDashboard() {
                     getPastLaunches(),
                 ]);
                 if (!cancelled) {
-                    const filtered = upcoming.filter(
+                    const filteredUpcoming = upcoming.filter(
                         (l) =>
                             l.id !== ARTEMIS_II_LAUNCH.id &&
                             !l.name.toLowerCase().includes("artemis ii"),
                     );
-                    setUpcomingLaunches([ARTEMIS_II_LAUNCH, ...filtered]);
-                    setPastLaunches(past);
+                    setUpcomingLaunches(filteredUpcoming);
+                    const filteredPast = past.filter(
+                        (l) =>
+                            l.id !== ARTEMIS_II_LAUNCH.id &&
+                            !l.name.toLowerCase().includes("artemis ii"),
+                    );
+                    setPastLaunches([ARTEMIS_II_LAUNCH, ...filteredPast]);
                 }
             } catch (err) {
                 if (!cancelled) {
