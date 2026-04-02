@@ -555,7 +555,7 @@ export function getMockSatellites(): Satellite[] {
     return satellites;
 }
 
-const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 export async function fetchTLEDataWithFallback(
     group: string,
@@ -567,7 +567,7 @@ export async function fetchTLEDataWithFallback(
         const jsonData = await fetchWithCache<CelestrakTLE[]>(
             cacheKey,
             () => fetchTLEData(group),
-            TWO_HOURS_MS,
+            ONE_DAY_MS,
         );
 
         const sats: Satellite[] = jsonData

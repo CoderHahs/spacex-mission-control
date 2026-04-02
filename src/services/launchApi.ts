@@ -2,7 +2,7 @@ import type { Launch, PaginatedResponse } from "@/types";
 import { fetchWithCache } from "@/utils/cacheUtils";
 
 const BASE_URL = "https://ll.thespacedevs.com/2.2.0";
-const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 async function fetchAPI<T>(endpoint: string): Promise<T> {
     const response = await fetch(`${BASE_URL}${endpoint}`);
@@ -24,7 +24,7 @@ export async function getUpcomingLaunches(limit = 20): Promise<Launch[]> {
             fetchAPI<PaginatedResponse<Launch>>(
                 `/launch/upcoming/?limit=${limit}&format=json`,
             ),
-        THIRTY_MINUTES_MS,
+        ONE_DAY_MS,
     );
     return data.results;
 }
@@ -36,7 +36,7 @@ export async function getPastLaunches(limit = 20): Promise<Launch[]> {
             fetchAPI<PaginatedResponse<Launch>>(
                 `/launch/previous/?limit=${limit}&format=json`,
             ),
-        THIRTY_MINUTES_MS,
+        ONE_DAY_MS,
     );
     return data.results;
 }

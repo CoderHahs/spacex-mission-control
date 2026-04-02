@@ -1,3 +1,5 @@
+export { getAnalyticsData } from "./analyticsApi";
+export type { AnalyticsData } from "./analyticsApi";
 export { getPastLaunches, getUpcomingLaunches } from "./launchApi";
 export { getMockMissionStats, getMockMissions } from "./missionApi";
 export {
