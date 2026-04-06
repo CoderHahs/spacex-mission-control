@@ -29,9 +29,9 @@ const WP: { x: number; y: number; labelDx: number; labelDy: number }[] = [
     // 7  Lunar Approach — nearing Moon
     { x: 660, y: 150, labelDx: 10, labelDy: -18 },
     // 8  Closest Lunar Approach — top-right past Moon
-    { x: 830, y: 110, labelDx: -20, labelDy: -20 },
-    // 9  Return Trajectory Burn — far right of Moon, below
-    { x: 890, y: 310, labelDx: 10, labelDy: 18 },
+    { x: 810, y: 130, labelDx: -20, labelDy: -20 },
+    // 9  Return Trajectory Burn — right of Moon, below
+    { x: 820, y: 300, labelDx: 10, labelDy: 18 },
     // 10 Return Coast — mid-return, below outbound
     { x: 590, y: 370, labelDx: 10, labelDy: 18 },
     // 11 Atmospheric Reentry — approaching Earth from right
@@ -132,6 +132,18 @@ function getActiveWaypointIndex(): number {
     return 0;
 }
 
+/** Evaluate cubic Bézier at parameter t */
+function cubicBezier(
+    p0: number,
+    cp1: number,
+    cp2: number,
+    p1: number,
+    t: number,
+): number {
+    const u = 1 - t;
+    return u * u * u * p0 + 3 * u * u * t * cp1 + 3 * u * t * t * cp2 + t * t * t * p1;
+}
+
 function getOrionPos(idx: number): { x: number; y: number } {
     if (idx < 0) return WP[0];
     if (idx >= WP.length - 1) return WP[WP.length - 1];
@@ -139,9 +151,21 @@ function getOrionPos(idx: number): { x: number; y: number } {
     const cur = MISSION_TIMELINE[idx].timestamp?.getTime() ?? now;
     const nxt = MISSION_TIMELINE[idx + 1]?.timestamp?.getTime() ?? cur + 1;
     const t = Math.min(Math.max((now - cur) / (nxt - cur), 0), 1);
+
+    // Compute the same Catmull-Rom → cubic Bézier control points as buildSplinePath
+    const p0 = WP[Math.max(idx - 1, 0)];
+    const p1 = WP[idx];
+    const p2 = WP[idx + 1];
+    const p3 = WP[Math.min(idx + 2, WP.length - 1)];
+    const tension = 0.35;
+    const cp1x = p1.x + (p2.x - p0.x) * tension;
+    const cp1y = p1.y + (p2.y - p0.y) * tension;
+    const cp2x = p2.x - (p3.x - p1.x) * tension;
+    const cp2y = p2.y - (p3.y - p1.y) * tension;
+
     return {
-        x: WP[idx].x + (WP[idx + 1].x - WP[idx].x) * t,
-        y: WP[idx].y + (WP[idx + 1].y - WP[idx].y) * t,
+        x: cubicBezier(p1.x, cp1x, cp2x, p2.x, t),
+        y: cubicBezier(p1.y, cp1y, cp2y, p2.y, t),
     };
 }
 
