@@ -29,9 +29,9 @@ const WP: { x: number; y: number; labelDx: number; labelDy: number }[] = [
     // 7  Lunar Approach — nearing Moon
     { x: 660, y: 150, labelDx: 10, labelDy: -18 },
     // 8  Closest Lunar Approach — top-right past Moon
-    { x: 810, y: 130, labelDx: -20, labelDy: -20 },
-    // 9  Return Trajectory Burn — right of Moon, below
-    { x: 820, y: 300, labelDx: 10, labelDy: 18 },
+    { x: 830, y: 110, labelDx: -20, labelDy: -20 },
+    // 9  Return Trajectory Burn — far right of Moon, below
+    { x: 890, y: 310, labelDx: 10, labelDy: 18 },
     // 10 Return Coast — mid-return, below outbound
     { x: 590, y: 370, labelDx: 10, labelDy: 18 },
     // 11 Atmospheric Reentry — approaching Earth from right
