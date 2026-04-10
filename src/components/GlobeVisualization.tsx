@@ -522,9 +522,11 @@ export function GlobeVisualization({
                         const visualAlt =
                             (orionPos.alt / LUNAR_DISTANCE_KM) *
                             VISUAL_MOON_DISTANCE;
-                        // Minimum 0.08 so the 3D ship model clears the globe surface
+                        // During reentry keep Orion visually above the globe;
+                        // splashdown phase drops closer to the surface.
+                        const minAlt = phase === "splashdown" ? 0.02 : 0.15;
                         const clampedAlt = Math.max(
-                            0.08,
+                            minAlt,
                             Math.min(visualAlt, VISUAL_MOON_DISTANCE * 1.1),
                         );
 
