@@ -77,8 +77,8 @@ const PHASE_START_MS: Record<ArtemisMissionPhase, number> = {
     translunar: 90 * 60 * 1000,
     "lunar-flyby": 3.5 * 24 * 60 * 60 * 1000,
     return: 5 * 24 * 60 * 60 * 1000,
-    reentry: 9.5 * 24 * 60 * 60 * 1000,
-    splashdown: 10 * 24 * 60 * 60 * 1000,
+    reentry: 9.0 * 24 * 60 * 60 * 1000,
+    splashdown: 9.5 * 24 * 60 * 60 * 1000,
 };
 
 const PHASE_END_MS: Record<ArtemisMissionPhase, number> = {
@@ -87,9 +87,9 @@ const PHASE_END_MS: Record<ArtemisMissionPhase, number> = {
     "earth-orbit": 90 * 60 * 1000,
     translunar: 3.5 * 24 * 60 * 60 * 1000,
     "lunar-flyby": 5 * 24 * 60 * 60 * 1000,
-    return: 9.5 * 24 * 60 * 60 * 1000,
-    reentry: 10 * 24 * 60 * 60 * 1000,
-    splashdown: 11 * 24 * 60 * 60 * 1000,
+    return: 9.0 * 24 * 60 * 60 * 1000,
+    reentry: 9.5 * 24 * 60 * 60 * 1000,
+    splashdown: 10 * 24 * 60 * 60 * 1000,
 };
 
 /**

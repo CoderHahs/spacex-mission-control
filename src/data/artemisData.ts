@@ -59,8 +59,8 @@ export const PHASE_THRESHOLDS = {
     earthOrbitMinutes: 90, // 2 Earth orbits
     translunarDays: 3.5, // TLI burn → coast
     lunarFlybyDays: 5, // Closest approach Day 4
-    returnDays: 9.5, // Return coast
-    reentryDays: 10, // Reentry corridor
+    returnDays: 9.0, // Return coast
+    reentryDays: 9.5, // Reentry corridor
 };
 
 // 12 Mission Timeline Milestones
@@ -156,7 +156,7 @@ export const MISSION_TIMELINE: ArtemisPhase[] = [
         name: "Atmospheric Reentry",
         description:
             "Orion reenters Earth atmosphere at approximately 25,000 mph",
-        timestamp: new Date("2026-04-11T10:35:00Z"),
+        timestamp: new Date("2026-04-10T23:37:00Z"),
         missionElapsedTime: "Day 10",
         status: "upcoming",
     },
@@ -164,8 +164,8 @@ export const MISSION_TIMELINE: ArtemisPhase[] = [
         id: "splashdown",
         name: "Splashdown",
         description:
-            "Orion splashes down in the Pacific Ocean, completing the mission",
-        timestamp: new Date("2026-04-11T22:35:00Z"),
+            "Orion splashes down in the Pacific Ocean off the coast of San Diego",
+        timestamp: new Date("2026-04-11T00:07:00Z"),
         missionElapsedTime: "Day 10",
         status: "upcoming",
     },
@@ -189,8 +189,8 @@ export function getMissionPhase(
     if (elapsedMinutes < 90) return "earth-orbit";
     if (elapsedDays < 3.5) return "translunar";
     if (elapsedDays < 5) return "lunar-flyby";
-    if (elapsedDays < 9.5) return "return";
-    if (elapsedDays < 10) return "reentry";
+    if (elapsedDays < 9.0) return "return";
+    if (elapsedDays < 9.5) return "reentry";
     return "splashdown";
 }
 
